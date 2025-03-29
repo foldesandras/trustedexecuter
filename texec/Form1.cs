@@ -67,6 +67,14 @@ namespace texec
             RunAdmin("powershell -EncodedCommand " + epayload);
         }
 
+        private void RunSystem(string cmd)
+        {
+            string ecmd = Convert.ToBase64String(Encoding.UTF8.GetBytes(cmd));
+            string payload = $"psexec.exe -s -i \"cmd.exe\" (\"/C start \" + [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\"{ecmd}\")))";
+            string epayload = Convert.ToBase64String(Encoding.Unicode.GetBytes(payload));
+            RunAdmin("powershell -EncodedCommand " + epayload);
+        }
+
         private void button1_Click(object sender, EventArgs e)
         {
             string cmd = cmdTxtBox.Text;
@@ -89,6 +97,13 @@ namespace texec
                         "TrustedExecuter", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                     {
                         RunTrustedInstaller(cmd);
+                    }
+                    break;
+                case "Run as 'NT AUTHORITY\\SYSTEM'":
+                    if (MessageBox.Show("Running stuff as 'NT AUTHORITY\\SYSTEM' is sketchy and if you do not know what you are doing, you could easily brick your system. Do you want to continue?",
+                        "TrustedExecuter", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                    {
+                        RunSystem(cmd);
                     }
                     break;
                 default:
