@@ -5,6 +5,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -13,19 +14,53 @@ namespace texec
 {
     public partial class Form1 : Form
     {
+        [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern IntPtr PathGetArgsW(IntPtr pszPath);
+
         public Form1()
         {
             InitializeComponent();
         }
 
+        public static (string programName, string arguments) GetProgramAndArguments(string cmdLine)
+        {
+            // Parancssori sztring
+            IntPtr cmdLinePtr = Marshal.StringToHGlobalUni(cmdLine);
+
+            // Kinyerjük az argumentumokat a PathGetArgsW segítségével
+            IntPtr lpArg = PathGetArgsW(cmdLinePtr);
+
+            if (lpArg != IntPtr.Zero)
+            {
+                // Az argumentumok karakterlánccá alakítása
+                string args = Marshal.PtrToStringUni(lpArg);
+
+                // A program nevének kinyerése (az argumentumok levonásával)
+                string programName = cmdLine.Substring(0, cmdLine.Length - args.Length).Trim();
+
+                // Ha az első és utolsó karakter idézőjel, eltávolítjuk őket
+                if (programName.StartsWith("\"") && programName.EndsWith("\""))
+                {
+                    programName = programName.Substring(1, programName.Length - 2);
+                }
+
+                return (programName, args);
+            }
+            else
+            {
+                return (cmdLine, string.Empty);  // Ha nincs argumentum
+            }
+        }
+
         private void Run(string cmd, ProcessStartInfo customPsi = null)
         {
+            (string app, string args) = GetProgramAndArguments(cmd);
             // Alapértelmezett ProcessStartInfo a cmd.exe futtatásához
             ProcessStartInfo defaultPsi = new ProcessStartInfo()
             {
                 UseShellExecute = true,
-                FileName = "cmd.exe",
-                Arguments = $"/C start {cmd}"
+                FileName = app,
+                Arguments = args
             };
 
             // Ha van egy custom Psi, akkor az összes beállítást átmásoljuk
@@ -35,11 +70,11 @@ namespace texec
                 // Ha a customPsi nem tartalmaz fájlnevet vagy parancsot, beállítjuk a default-ot
                 if (string.IsNullOrEmpty(customPsi.FileName))
                 {
-                    defaultPsi.FileName = "cmd.exe";
+                    defaultPsi.FileName = app;
                 }
                 if (string.IsNullOrEmpty(customPsi.Arguments))
                 {
-                    defaultPsi.Arguments = $"/C start {cmd}";
+                    defaultPsi.Arguments = args;
                 }
                 defaultPsi.UseShellExecute = true;
             }
@@ -61,16 +96,31 @@ namespace texec
 
         private void RunTrustedInstaller(string cmd)
         {
-            string ecmd = Convert.ToBase64String(Encoding.UTF8.GetBytes(cmd));
-            string payload = $"import-module ntobjectmanager;sc.exe start trustedinstaller;$p = get-ntprocess -name trustedinstaller.exe;$proc = new-win32process (\"cmd.exe /C start \" + [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\"{ecmd}\"))) -creationflags newconsole -parentprocess $p;";
+            (string app, string args) = GetProgramAndArguments(cmd);
+            if (string.IsNullOrEmpty(args))
+            {
+                args = " ";
+            }
+            string eapp = Convert.ToBase64String(Encoding.UTF8.GetBytes(app));
+            string eargs = Convert.ToBase64String(Encoding.UTF8.GetBytes(args));
+            string payload = $"import-module ntobjectmanager;sc.exe start trustedinstaller;$p = get-ntprocess -name trustedinstaller.exe;$proc = new-win32process (\"powershell.exe -C `\"Start-Process -FilePath ([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{eapp}'))) -ArgumentList @([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{eargs}'))) `\"\") -creationflags newconsole -parentprocess $p;";
             string epayload = Convert.ToBase64String(Encoding.Unicode.GetBytes(payload));
             RunAdmin("powershell -EncodedCommand " + epayload);
         }
 
         private void RunSystem(string cmd)
         {
-            string ecmd = Convert.ToBase64String(Encoding.UTF8.GetBytes(cmd));
-            string payload = $"psexec.exe -s -i \"cmd.exe\" (\"/C start \" + [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(\"{ecmd}\")))";
+            (string app, string args) = GetProgramAndArguments(cmd);
+            if (string.IsNullOrEmpty(args))
+            {
+                args = " ";
+            }
+            string eapp = Convert.ToBase64String(Encoding.UTF8.GetBytes(app));
+            string eargs = Convert.ToBase64String(Encoding.UTF8.GetBytes(args));
+            string payload2 = $"Start-Process -FilePath ([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{eapp}'))) -ArgumentList @([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{eargs}')))";
+            string epayload2 = Convert.ToBase64String(Encoding.Unicode.GetBytes(payload2));
+            Console.WriteLine(epayload2);
+            string payload = $"psexec.exe -s -i powershell.exe -EncodedCommand {epayload2}";
             string epayload = Convert.ToBase64String(Encoding.Unicode.GetBytes(payload));
             RunAdmin("powershell -EncodedCommand " + epayload);
         }
