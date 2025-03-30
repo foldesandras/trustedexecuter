@@ -2,6 +2,11 @@
 
 **TrustedExecuter** is a Windows GUI tool that allows you to run commands with elevated privileges, such as **`NT AUTHORITY\SYSTEM`**, **`TrustedInstaller`**, or **`Administrator`** rights. The tool provides an easy-to-use graphical interface for executing commands with high-level privileges.
 
+> [!WARNING]
+> **TrustedExecuter** allows you to execute commands with very high privileges, which can significantly affect your system.
+> Always ensure that the commands you run are trusted, as they may modify sensitive system files and configurations.
+> Use this tool responsibly to avoid making unintended or harmful changes to your system.
+
 ## Features
 
 - **Run as Administrator**: Run commands with **Administrator** privileges.
@@ -43,12 +48,6 @@ To run a command with **NT AUTHORITY\SYSTEM** privileges:
 - **Run as Administrator**: Run with **Administrator** rights.
 - **Run as NT AUTHORITY\SYSTEM**: Run with **NT AUTHORITY\SYSTEM** rights.
 - **Run as TrustedInstaller**: Run with **TrustedInstaller** rights.
-
-## Warning
-
-**TrustedExecuter** allows you to execute commands with very high privileges, which can significantly affect your system.
-Always ensure that the commands you run are trusted, as they may modify sensitive system files and configurations.
-Use this tool responsibly to avoid making unintended or harmful changes to your system.
 
 ## License
 
